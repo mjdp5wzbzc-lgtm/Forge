@@ -1,7 +1,7 @@
 /* Forge : fonctionnement hors connexion.
    Fichiers de l'application : réseau d'abord (mises à jour immédiates), cache en secours.
    Polices : cache d'abord. */
-const CACHE = 'forge-v3';
+const CACHE = 'forge-v4';
 const SHELL = ['./', 'index.html', 'data.js', 'engine.js', 'body.js', 'app.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

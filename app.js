@@ -468,7 +468,7 @@ VIEWS.home = function (now) {
 
   // ----- résumé de semaine
   const strengths = okG.map(g => GROUPS[g].name);
-  const summary = `<div class="card"><h3 style="margin-bottom:8px">Résumé de la semaine</h3><p class="small" style="color:var(--fg-2)">
+  const summary = `<div class="card"><div class="card-h" style="margin-bottom:8px"><h3>Résumé de la semaine</h3><button class="btn sm ghost" data-act="past-new">${icon('plus')}Séance oubliée</button></div><p class="small" style="color:var(--fg-2)">
     ${wk.sessions ? `${wk.sessions} séance${wk.sessions > 1 ? 's' : ''} de musculation (objectif ${p.freqMin} à ${p.freqMax}), ${wk.sets} séries, ${fmt(wk.tonnage, 0)} kg déplacés` : 'Aucune séance de musculation depuis lundi'}${wk.cardioCount ? `, ${wk.cardioCount} séance${wk.cardioCount > 1 ? 's' : ''} de cardio (${wk.cardioMinutes} min)` : ''}.
     ${wk.minutes ? `Temps total : ${fmin(wk.minutes)}, dépense estimée ~${fmt(wk.kcal, 0)} kcal.` : ''}
     ${strengths.length ? `Dans la cible : ${esc(strengths.join(', '))}.` : ''}
@@ -715,6 +715,7 @@ function sessionView(now) {
       <div class="section"><p class="eyebrow" style="margin-bottom:8px">Séances types</p><div class="grid g2">
         ${E.TEMPLATES.filter(t => !(t.legs && S.profile.noLegs)).map(t => `<button class="btn" style="justify-content:flex-start;text-align:left" data-act="template" data-t="${t.id}">${esc(t.name)}</button>`).join('')}
         <button class="btn ghost" style="justify-content:flex-start" data-act="empty-session">${icon('plus')}Séance libre (vide)</button></div></div>
+      <div class="card section"><div class="spread"><div style="min-width:0"><h3>Séance oubliée ?</h3><p class="xs muted" style="margin-top:3px">Vous vous êtes entraîné sans l'appli : ajoutez la séance après coup, à la bonne date.</p></div><button class="btn sm" data-act="past-new">${icon('plus')}Ajouter</button></div></div>
       ${recent.length ? `<div class="section card"><div class="card-h"><h3>Dernières séances</h3><button class="btn sm ghost" data-act="sub" data-tab="progress" data-sub="history">Historique</button></div><div class="list">${recent.map(historyItem).join('')}</div></div>` : ''}`;
   }
   const gi = plan.groupInfo || {};
@@ -735,7 +736,8 @@ function sessionView(now) {
   return `<div class="card hero"><div class="spread" style="align-items:flex-start"><div><p class="eyebrow">${plan.auto ? 'Séance automatique' : 'Séance personnalisée'} · prête</p><h2 style="margin:6px 0">${esc(plan.title || 'Séance libre')}</h2>
       <p class="small muted">${plan.exercises.length} exercices · ${totalSets} séries · ~${plan.estMinutes || Math.round(6 + totalSets * 2.6)} min</p></div></div>
       <div class="row" style="margin-top:10px;flex-wrap:nowrap"><span class="label" style="white-space:nowrap">Salle</span>${gymSelect('gym-sel-p')}</div>
-      <div class="row" style="margin-top:12px"><button class="btn primary" data-act="start" ${plan.exercises.length ? '' : 'disabled'}>${icon('play')}Démarrer</button><button class="btn" data-act="regen">Régénérer</button><button class="btn ghost danger" data-act="plan-cancel">Abandonner</button></div></div>
+      <div class="row" style="margin-top:12px"><button class="btn primary" data-act="start" ${plan.exercises.length ? '' : 'disabled'}>${icon('play')}Démarrer</button><button class="btn" data-act="regen">Régénérer</button><button class="btn ghost danger" data-act="plan-cancel">Abandonner</button></div>
+      <button class="btn sm ghost" style="margin-top:6px" data-act="past-plan">Déjà faite sans l'appli ? Saisir les résultats</button></div>
     ${(plan.notes || []).length ? `<div class="notice acc section">${icon('info')}<span>${(plan.notes || []).map(esc).join('<br>')}</span></div>` : ''}
     ${(plan.warnings || []).map(w => `<div class="notice warn" style="margin-top:10px">${icon('alert')}<span>${esc(w)}</span></div>`).join('')}
     ${why ? `<details class="card section"><summary style="cursor:pointer;font-weight:600">Pourquoi ce volume ?</summary><ul class="small" style="margin:10px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px">${why}</ul></details>` : ''}
@@ -745,7 +747,7 @@ function sessionView(now) {
 
 function historyItem(w) {
   const st = E.workoutStats(w, E.currentWeight(S));
-  return `<button class="li" data-act="history" data-id="${w.id}"><div class="li-main"><div class="li-title">${esc(w.title || 'Séance')}</div><div class="xs muted">${esc(fday(w.finishedAt))} · ${st.sets} séries · ${fmt(st.tonnage, 0)} kg · ${st.minutes} min</div></div>${icon('chev')}</button>`;
+  return `<button class="li" data-act="history" data-id="${w.id}"><div class="li-main"><div class="li-title">${esc(w.title || 'Séance')}${w.manual ? ' <span class="chip" style="padding:1px 7px;font-size:11px">saisie après coup</span>' : ''}</div><div class="xs muted">${esc(fday(w.finishedAt))} · ${st.sets} séries · ${fmt(st.tonnage, 0)} kg · ${st.minutes} min</div></div>${icon('chev')}</button>`;
 }
 
 // ----- sélecteur d'exercice (ajout / remplacement)
@@ -780,6 +782,16 @@ function onPick(exId) {
     } else S.plan.exercises.push(prescribe(exId, 3));
     commit();
   } else if (c.target === 'live') liveOnPick(c, exId);
+  else if (c.target === 'past' && UI.past) {
+    const P = UI.past, ex = EXERCISES[exId];
+    const before = P.date ? parseDay(P.date) + 16 * 3600e3 : Date.now();
+    const last = E.performances(S, exId, before)[0];
+    const sets = last ? last.sets.map(s => ({ load: s.load, reps: s.reps, rir: s.rir == null ? '' : s.rir }))
+      : [1, 2, 3].map(() => { const p = prescribe(exId, 1).sets[0]; return { load: p.load, reps: p.targetReps, rir: '' }; });
+    P.exercises.push({ uid: E.uid(), exId, sets });
+    renderPast();
+    toast(last ? `Pré-rempli avec votre dernière fois (${fdate(last.date)}) : corrigez si besoin.` : 'Pré-rempli avec une charge et des répétitions types : remplacez par ce que vous avez fait.');
+  }
 }
 
 // ----- fiche exercice
@@ -1082,8 +1094,137 @@ function openSummary(id, fresh) {
     ${cmp ? `<div class="card"><h3 style="margin-bottom:6px">Comparaison avec « ${esc(cmp.prev.title || 'séance')} » du ${esc(fdate(cmp.prev.finishedAt))}</h3>
       ${cmp.exDeltas.length ? `<div class="list">${cmp.exDeltas.map(x => `<div class="li"><div class="li-main"><div class="li-title">${esc(x.name)}</div><div class="xs muted">1RM estimé ${fmt(x.old)} → ${fmt(x.cur)} kg</div></div><span class="chip ${x.pct > 0.5 ? 'good' : x.pct < -0.5 ? 'bad' : ''}">${x.pct > 0 ? '+' : ''}${fmt(x.pct)} %</span></div>`).join('')}</div>` : '<p class="small muted">Aucun exercice commun avec cette séance.</p>'}</div>` : '<p class="small muted">Première séance de ce type : la comparaison apparaîtra la prochaine fois.</p>'}
     <div class="card"><h3 style="margin-bottom:6px">Détail</h3><div class="list">${w.exercises.map(e => { const ex = EXERCISES[e.exId]; return `<div class="li"><div class="li-main"><div class="li-title">${esc(ex ? ex.name : e.exId)}</div><div class="xs muted">${e.sets.map(s => `${s.reps} × ${ex ? E.loadStr(ex, s.load) : s.load}${s.rir != null && s.rir !== '' ? ` @RIR ${s.rir}` : ''}`).join(' · ')}</div></div></div>`; }).join('')}</div></div>
+    <button class="btn block" data-act="past-edit" data-id="${w.id}">${icon('edit')}Modifier (date, exercices, séries)</button>
     ${fresh ? '' : `<div id="del-zone"><button class="btn ghost danger block" data-act="del-workout-ask" data-id="${w.id}">${icon('trash')}Supprimer cette séance</button></div>`}
   </div>`);
+}
+
+// =====================================================================
+// SÉANCE OUBLIÉE : saisie ou modification d'une séance après coup
+// =====================================================================
+UI.past = null;
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function hhmm(ts) { const d = new Date(ts); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+function pastDraftExercises(list, fromPlan) {
+  return list.map(e => ({
+    uid: E.uid(), exId: e.exId,
+    sets: e.sets.filter(s => fromPlan || s.done).map(s => ({
+      load: s.load === '' || s.load == null ? '' : s.load,
+      reps: fromPlan ? s.targetReps : s.reps,
+      rir: fromPlan ? s.targetRir : (s.rir == null ? '' : s.rir)
+    }))
+  })).filter(e => EXERCISES[e.exId] && e.sets.length);
+}
+
+// opts : { id } pour modifier une séance, { fromPlan: true } pour reprendre la séance prévue
+function openPast(opts) {
+  opts = opts || {};
+  const now = Date.now();
+  if (opts.id) {
+    const w = S.workouts.find(x => x.id === opts.id); if (!w) return;
+    UI.past = { id: w.id, title: w.title || '', date: isoDay(w.finishedAt), time: hhmm(w.startedAt || w.finishedAt), minutes: Math.max(5, Math.round((w.finishedAt - (w.startedAt || w.finishedAt)) / 60000)) || 60,
+      exercises: pastDraftExercises(w.exercises, false), template: w.template || null };
+  } else {
+    const y = new Date(now - DAY);
+    UI.past = { id: null, title: '', date: isoDay(opts.fromPlan ? now : y.getTime()), time: '18:00', minutes: S.profile.sessionMinutes || 60, exercises: [], template: null };
+    if (opts.fromPlan && S.plan) {
+      UI.past.title = S.plan.title || ''; UI.past.template = S.plan.template || null;
+      UI.past.exercises = pastDraftExercises(S.plan.exercises, true);
+      UI.past.date = isoDay(now); UI.past.time = hhmm(now - (S.plan.estMinutes || 60) * 60000);
+      UI.past.minutes = S.plan.estMinutes || 60; UI.past.fromPlan = true;
+    }
+  }
+  closeSheet();
+  renderPast();
+}
+
+function renderPast() {
+  const host = $('#past');
+  const P = UI.past;
+  if (!P) { host.innerHTML = ''; if (!(S.active && UI.liveOpen)) document.body.style.overflow = ''; return; }
+  document.body.style.overflow = 'hidden';
+  const today = isoDay(Date.now());
+  const recent = S.workouts.filter(w => w.finishedAt && w.id !== P.id).slice(-6).reverse();
+  const nSets = P.exercises.reduce((a, e) => a + e.sets.length, 0);
+  const startTs = P.date ? parseDay(P.date) - 8 * 3600e3 + timeMs(P.time) : null;
+  const old = startTs && Date.now() - startTs > 7 * DAY;
+  const exHtml = P.exercises.map((e, ei) => {
+    const ex = EXERCISES[e.exId];
+    const unit = ex.unit === 'added' ? 'Lest kg' : ex.unit === 'per_hand' ? 'kg/halt.' : 'Charge kg';
+    return `<div class="plan-ex"><div class="spread"><div style="min-width:0"><div class="li-title">${esc(ex.name)}</div><div class="xs muted">${esc(GROUPS[ex.primaryGroup] ? GROUPS[ex.primaryGroup].name : '')} · fourchette ${ex.reps[0]}-${ex.reps[1]}</div></div>
+      <button class="icon-btn" data-act="past-delex" data-e="${ei}" aria-label="Retirer ${esc(ex.name)}">${icon('trash')}</button></div>
+      <table class="set-table" style="margin-top:6px"><thead><tr><th>#</th><th>${unit}</th><th>Reps</th><th>RIR</th><th></th></tr></thead><tbody>
+      ${e.sets.map((s, si) => `<tr><td class="set-n">${si + 1}</td>
+        <td><input class="cell-in" id="pl-${e.uid}-${si}" inputmode="decimal" data-past="load" data-e="${ei}" data-s="${si}" value="${esc(s.load)}" aria-label="Charge série ${si + 1}"></td>
+        <td><input class="cell-in" id="pr-${e.uid}-${si}" inputmode="numeric" data-past="reps" data-e="${ei}" data-s="${si}" value="${esc(s.reps)}" aria-label="Répétitions série ${si + 1}"></td>
+        <td><input class="cell-in" id="pi-${e.uid}-${si}" inputmode="numeric" data-past="rir" data-e="${ei}" data-s="${si}" value="${esc(s.rir)}" placeholder="?" style="max-width:60px" aria-label="RIR série ${si + 1}"></td>
+        <td><button class="tick" data-act="past-delset" data-e="${ei}" data-s="${si}" aria-label="Supprimer la série ${si + 1}" ${e.sets.length > 1 ? '' : 'disabled'}>${icon('x')}</button></td></tr>`).join('')}
+      </tbody></table>
+      <button class="btn sm" data-act="past-addset" data-e="${ei}">${icon('plus')}Série</button></div>`;
+  }).join('');
+  host.innerHTML = `<div class="live" role="dialog" aria-label="${P.id ? 'Modifier la séance' : 'Ajouter une séance oubliée'}"><div class="live-in">
+    <div class="live-head"><button class="icon-btn" data-act="past-close" aria-label="Fermer sans enregistrer">${icon('x')}</button>
+      <div style="flex:1;min-width:0"><div class="li-title">${P.id ? 'Modifier la séance' : 'Séance oubliée'}</div><div class="xs muted">${P.exercises.length} exercice${P.exercises.length > 1 ? 's' : ''} · ${nSets} série${nSets > 1 ? 's' : ''}</div></div>
+      <button class="btn sm primary" data-act="past-save">Enregistrer</button></div>
+    <div class="card" style="margin-top:14px"><div class="grid g2">
+      <div class="field"><label for="past-date">Date</label><input class="input" type="date" id="past-date" data-pastf="date" value="${esc(P.date)}" max="${today}"></div>
+      <div class="field"><label for="past-time">Heure de début</label><input class="input" type="time" id="past-time" data-pastf="time" value="${esc(P.time)}"></div>
+      <div class="field"><label for="past-min">Durée (min)</label><input class="input" id="past-min" inputmode="numeric" data-pastf="minutes" value="${esc(P.minutes)}"></div>
+      <div class="field"><label for="past-title">Nom (facultatif)</label><input class="input" id="past-title" data-pastf="title" value="${esc(P.title)}" placeholder="ex. Poussée"></div></div>
+      ${old ? '<p class="xs muted" style="margin-top:8px">Séance de plus de 7 jours : elle ne compte plus dans le volume de la semaine, mais elle sert à l\'historique et à la progression des charges.</p>' : ''}
+      ${P.fromPlan ? '<p class="xs muted" style="margin-top:8px">Pré-rempli avec la séance prévue : corrigez les charges et répétitions réellement faites.</p>' : ''}</div>
+    ${!P.exercises.length && recent.length ? `<div class="card section"><h3 style="margin-bottom:4px">Partir d'une séance existante</h3><p class="xs muted" style="margin-bottom:8px">Recopie les exercices et les séries, que vous ajustez ensuite.</p>
+      <div class="list">${recent.map(w => { const st = E.workoutStats(w, E.currentWeight(S)); return `<button class="li" data-act="past-copy" data-id="${w.id}"><div class="li-main"><div class="li-title">${esc(w.title || 'Séance')}</div><div class="xs muted">${esc(fdate(w.finishedAt))} · ${w.exercises.length} exercices · ${st.sets} séries</div></div>${icon('plus')}</button>`; }).join('')}</div></div>` : ''}
+    <div class="section">${exHtml || '<p class="muted small">Ajoutez les exercices que vous avez faits.</p>'}</div>
+    <button class="btn block section" data-act="past-addex">${icon('plus')}Ajouter un exercice</button>
+    <p class="xs muted section">RIR facultatif : laissez « ? » si vous ne vous en souvenez pas. Le volume, la récupération et les prochaines charges seront recalculés avec cette séance.</p>
+    ${P.id ? `<div id="past-del" class="section"><button class="btn ghost danger block" data-act="past-del-ask">${icon('trash')}Supprimer cette séance</button></div>` : ''}
+    <div style="height:30px"></div></div></div>`;
+}
+function timeMs(t) { const m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? (+m[1] * 60 + +m[2]) * 60000 : 18 * 3600e3; }
+
+function savePast() {
+  const P = UI.past;
+  if (!P.date) { toast('Choisissez la date de la séance.'); return; }
+  const start = parseDay(P.date) - 8 * 3600e3 + timeMs(P.time); // parseDay renvoie 8 h
+  const minutes = Math.max(5, Math.min(300, Math.round(num(P.minutes) || 60)));
+  let fin = start + minutes * 60000;
+  const now = Date.now();
+  if (start > now) { toast('La date et l\'heure sont dans le futur.'); return; }
+  if (fin > now) fin = now;
+  const exercises = P.exercises.map(e => {
+    const ex = EXERCISES[e.exId];
+    const sets = e.sets.map(s => ({ load: num(s.load) || 0, reps: Math.round(num(s.reps) || 0), rir: num(s.rir) == null ? '' : num(s.rir), done: true }))
+      .filter(s => s.reps > 0);
+    const sc = E.scheme(S, ex, E.readiness(null));
+    return { uid: e.uid, exId: e.exId, group: ex.primaryGroup, repRange: ex.reps.slice(), rir: sc.rir, rest: ex.rest, tempo: sc.tempo, sets };
+  }).filter(e => e.sets.length);
+  if (!exercises.length) { toast('Ajoutez au moins une série avec un nombre de répétitions.'); return; }
+  const dropped = P.exercises.reduce((a, e) => a + e.sets.filter(s => !(Math.round(num(s.reps) || 0) > 0)).length, 0);
+  if (dropped && !P.confirmDrop) { P.confirmDrop = true; toast(`${dropped} série${dropped > 1 ? 's' : ''} sans répétitions ${dropped > 1 ? 'seront ignorées' : 'sera ignorée'}. Touchez Enregistrer à nouveau pour confirmer.`); return; }
+  const groups = {};
+  exercises.forEach(e => { const g = EXERCISES[e.exId].primaryGroup; groups[g] = (groups[g] || 0) + e.sets.length; });
+  const autoTitle = Object.keys(groups).sort((a, b) => groups[b] - groups[a]).slice(0, 3).map(g => GROUPS[g].name).join(' · ');
+  const prev = P.id ? S.workouts.find(w => w.id === P.id) : null;
+  const w = Object.assign({}, prev || {}, {
+    id: P.id || 'w' + E.uid(), title: (P.title || '').trim() || autoTitle, template: P.template || (prev && prev.template) || null,
+    startedAt: start, finishedAt: fin, bodyweight: (prev && prev.bodyweight) || weightAt(fin), exercises, manual: true
+  });
+  delete w.demo;
+  if (prev) S.workouts[S.workouts.indexOf(prev)] = w; else S.workouts.push(w);
+  S.workouts.sort((a, b) => (a.finishedAt || 0) - (b.finishedAt || 0));
+  if (P.fromPlan && !P.id) S.plan = null;
+  UI.past = null;
+  commit({ workout: w.id });
+  renderPast();
+  toast(prev ? 'Séance modifiée.' : `Séance du ${fdate(fin, { weekday: 'long', day: 'numeric', month: 'long' })} ajoutée.`);
+  if (!prev) openSummary(w.id);
+}
+// Poids le plus proche de la date de la séance
+function weightAt(ts) {
+  const logs = S.bodyLogs.filter(l => l.weight && l.date <= ts + DAY).sort((a, b) => b.date - a.date);
+  return logs.length ? +logs[0].weight : E.currentWeight(S);
 }
 
 // =====================================================================
@@ -1160,10 +1301,11 @@ function bodyProgress(now) {
 
 function historyView() {
   const ws = S.workouts.filter(w => w.finishedAt).slice().sort((a, b) => b.finishedAt - a.finishedAt);
-  if (!ws.length) return '<div class="chart-empty">Aucune séance enregistrée.</div>';
+  const addBtn = `<button class="btn block" data-act="past-new">${icon('plus')}Ajouter une séance oubliée</button>`;
+  if (!ws.length) return addBtn + '<div class="chart-empty section">Aucune séance enregistrée.</div>';
   const groups = {};
   ws.forEach(w => { const k = E.weekStart(w.finishedAt); (groups[k] = groups[k] || []).push(w); });
-  return Object.keys(groups).sort((a, b) => b - a).map(k => `<div class="section"><p class="eyebrow" style="margin-bottom:6px">Semaine du ${esc(fdate(+k, { day: 'numeric', month: 'long' }))} · ${groups[k].length} séance${groups[k].length > 1 ? 's' : ''}</p><div class="card" style="padding-block:4px"><div class="list">${groups[k].map(historyItem).join('')}</div></div></div>`).join('');
+  return addBtn + Object.keys(groups).sort((a, b) => b - a).map(k => `<div class="section"><p class="eyebrow" style="margin-bottom:6px">Semaine du ${esc(fdate(+k, { day: 'numeric', month: 'long' }))} · ${groups[k].length} séance${groups[k].length > 1 ? 's' : ''}</p><div class="card" style="padding-block:4px"><div class="list">${groups[k].map(historyItem).join('')}</div></div></div>`).join('');
 }
 
 // =====================================================================
@@ -1453,6 +1595,19 @@ document.addEventListener('click', ev => {
       toast(a === 'fav' ? (i >= 0 ? 'Retiré des favoris.' : 'Ajouté aux favoris : il sera privilégié.') : (i >= 0 ? 'Exercice réautorisé.' : 'Cet exercice ne sera plus proposé.')); break;
     }
     case 'history': openSummary(d.id); break;
+    case 'past-new': openPast(); break;
+    case 'past-plan': openPast({ fromPlan: true }); break;
+    case 'past-edit': openPast({ id: d.id }); break;
+    case 'past-close': UI.past = null; renderPast(); break;
+    case 'past-save': savePast(); break;
+    case 'past-addex': openPicker({ target: 'past', mode: 'add' }); break;
+    case 'past-delex': UI.past.exercises.splice(+d.e, 1); renderPast(); break;
+    case 'past-addset': { const e = UI.past.exercises[+d.e]; const l = e.sets[e.sets.length - 1] || { load: '', reps: '', rir: '' }; e.sets.push(Object.assign({}, l)); renderPast(); break; }
+    case 'past-delset': { const e = UI.past.exercises[+d.e]; if (e.sets.length > 1) e.sets.splice(+d.s, 1); renderPast(); break; }
+    case 'past-copy': { const w = S.workouts.find(x => x.id === d.id); UI.past.exercises = pastDraftExercises(w.exercises, false); if (!UI.past.title) UI.past.title = w.title || ''; UI.past.template = w.template || null; renderPast(); toast('Séance recopiée : ajustez les charges et répétitions.'); break; }
+    case 'past-del-ask': $('#past-del').innerHTML = `<div class="notice bad" style="flex-direction:column;gap:10px"><span>Supprimer définitivement cette séance ?</span><div class="row"><button class="btn danger" data-act="past-del">Supprimer</button><button class="btn" data-act="past-del-cancel">Annuler</button></div></div>`; break;
+    case 'past-del-cancel': renderPast(); break;
+    case 'past-del': { const id = UI.past.id; S.workouts = S.workouts.filter(w => w.id !== id); S.deleted.push(id); Sync.delW.add(id); UI.past = null; renderPast(); commit(); toast('Séance supprimée.'); break; }
     case 'del-workout-ask': $('#del-zone').innerHTML = `<div class="notice bad" style="flex-direction:column;gap:10px"><span>Supprimer définitivement cette séance ? Les volumes et la progression seront recalculés.</span><div class="row"><button class="btn danger" data-act="del-workout" data-id="${d.id}">Supprimer</button><button class="btn" data-act="close-sheet">Annuler</button></div></div>`; break;
     case 'del-workout': S.workouts = S.workouts.filter(w => w.id !== d.id); S.deleted.push(d.id); Sync.delW.add(d.id); closeSheet(); commit(); toast('Séance supprimée.'); break;
     // ----- séance en direct
@@ -1513,6 +1668,8 @@ document.addEventListener('keydown', ev => {
 let inputT;
 document.addEventListener('input', ev => {
   const t = ev.target;
+  if (t.dataset.past && UI.past) { const s = UI.past.exercises[+t.dataset.e].sets[+t.dataset.s]; s[t.dataset.past] = t.value.replace(',', '.'); return; }
+  if (t.dataset.pastf && UI.past) { UI.past[t.dataset.pastf] = t.value; return; }
   if (t.dataset.live) {
     const e = S.active.exercises[S.active.cur]; const s = e.sets[+t.dataset.i];
     s[t.dataset.live] = t.value.replace(',', '.');
@@ -1526,6 +1683,7 @@ document.addEventListener('input', ev => {
 
 document.addEventListener('change', async ev => {
   const t = ev.target;
+  if (t.dataset.pastf && UI.past) { UI.past[t.dataset.pastf] = t.value; if (t.dataset.pastf === 'date' || t.dataset.pastf === 'time') renderPast(); return; }
   const k = t.dataset.input;
   if (k === 'lib-g') { UI.libFilter.group = t.value; render(); }
   else if (k === 'lib-e') { UI.libFilter.eq = t.value; render(); }
