@@ -525,6 +525,14 @@
     exec: "Enrouler le buste, contracter 1 s, revenir lentement.",
     mistakes: ["Tirer avec les bras", "Élan", "Amplitude courte"],
     variants: { deb: "Crunch machine", int: "Crunch machine", adv: "Avec pause" } });
+  ex({ id: 'torso_rotation_machine', name: 'Rotation du buste machine', eq: 'machine', type: 'isolation', lvl: 1,
+    m: { obliques: 1, abs: 0.5 },
+    reps: [10, 15], sets: [2, 3], rest: 60, inc: 5, start: 0.3, unit: 'total',
+    desc: "Rotation guidée du tronc contre résistance : cible les obliques sans charger le bas du dos.",
+    setup: "Assis, réglez l'amplitude de départ sur le côté, bassin et cuisses bien calés dans les coussins, buste droit contre l'appui, mains sur les poignées.",
+    exec: "Tournez le buste en expirant en contractant les abdominaux, le bassin reste immobile. Marquez 1 s en fin de rotation, revenez lentement. Faites toutes les répétitions d'un côté puis changez.",
+    mistakes: ["Tourner avec les bras au lieu du tronc", "Laisser le bassin pivoter", "Amplitude forcée en fin de rotation ou retour en lâchant la charge"],
+    variants: { deb: "Amplitude réduite, charge légère", int: "Rotation du buste machine", adv: "Pause de 2 s en fin de rotation et retour en 3 s" } });
   ex({ id: 'pallof_press', name: 'Pallof press', eq: 'cable', type: 'isolation', lvl: 1,
     m: { obliques: 1, abs: 0.5 },
     reps: [10, 15], sets: [2, 3], rest: 60, inc: 2.5, start: 0.15, unit: 'total',
@@ -641,6 +649,7 @@
     tbar_m:           { name: 'T-bar / landmine', cat: 'Machines guidées' },
     preacher_m:       { name: 'Machine curl pupitre', cat: 'Machines guidées' },
     crunch_m:         { name: 'Machine à crunch', cat: 'Machines guidées' },
+    torso_rot_m:      { name: 'Machine rotation du buste', cat: 'Machines guidées' },
     leg_press_m:      { name: 'Presse à cuisses', cat: 'Machines jambes' },
     leg_ext_m:        { name: 'Leg extension', cat: 'Machines jambes' },
     leg_curl_m:       { name: 'Leg curl', cat: 'Machines jambes' },
@@ -667,7 +676,7 @@
     skullcrusher: [['ez_bar', 'barbell'], 'bench_flat'], db_overhead_ext: ['dumbbells'], bench_dips: ['bench_flat'],
     wrist_curl: ['dumbbells', 'bench_flat'], reverse_curl: [['ez_bar', 'barbell']],
     cable_crunch: [CABLE_ANY], hanging_leg_raise: [['pullup_bar', 'dip_station']], ab_wheel: ['ab_wheel'], machine_crunch: ['crunch_m'],
-    pallof_press: ['cable_station'], woodchopper: ['cable_station'], back_extension: ['back_ext_bench'],
+    torso_rotation_machine: ['torso_rot_m'], pallof_press: ['cable_station'], woodchopper: ['cable_station'], back_extension: ['back_ext_bench'],
     leg_press: ['leg_press_m'], goblet_squat: ['dumbbells'], back_squat: ['barbell', 'squat_rack'], leg_ext: ['leg_ext_m'],
     leg_curl: ['leg_curl_m'], rdl_db: ['dumbbells'], hip_thrust: ['barbell', 'bench_flat'], calf_raise: ['calf_m']
   };
